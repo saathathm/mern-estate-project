@@ -28,7 +28,7 @@ const signin = async (req, res, next) => {
         const validPassword = bcryptjs.compareSync(password, validUser.password);
         if (!validPassword) return next(errorHandler(401, "Wrong credentials!"));
         const token = jwt.sign({ id: validUser._id }, process.env.JWT_SECRET);
-        const {password:pass, ...otherDetails} = validUser._doc;
+        const { password: pass, ...otherDetails } = validUser._doc;
         res.cookie('access_token', token, { httpOnly: true, maxAge: 24 * 60 * 60 * 2000 }).status(200).json(otherDetails);
     } catch (error) {
         next(error);
@@ -36,7 +36,29 @@ const signin = async (req, res, next) => {
 
 }
 
+const google = async (req, res, next) => {
+    try {
+        const user = await User.findOne({ email: req.body.email });
+        if (user) {
+            const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET);
+            const { password: pass, ...otherDetails } = user._doc;
+            res.cookie('access token', token, { httpOnly: true }).status(200).json(otherDetails);
+        } else {
+            const generatedPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+            const hashedPassword = bcryptjs.hashSync(generatedPassword, 10);
+            const newUser = new User({ username: req.body.name.split(" ").join("").toLowerCase() + Math.random().toString(36).slice(-4), email: req.body.email, password: hashedPassword, avatar: req.body.photo });
+            await newUser.save();
+            const token = jwt.sign({ id: newUser._id }, process.env.JWT_SECRET);
+            const { password: pass, ...otherDetails } = newUser._doc;
+            res.cookie('access token', token, { httpOnly: true }).status(200).json(otherDetails);
+        }
+    } catch (error) {
+        next(error);
+    }
+}
+
 export {
     signup,
-    signin
+    signin,
+    google,
 }
